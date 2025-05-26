@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Toast animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Wave animation for music visualizer */
+@keyframes wave {
+  0%, 100% {
+    height: 10%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+/* Pulse animation for elements */
+@keyframes pulse-spotify {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Gradient animation */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Utility classes */
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.3s ease-in forwards;
+}
+
+.animate-wave {
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+.animate-pulse-spotify {
+  animation: pulse-spotify 2s infinite ease-in-out;
+}
+
+.animate-gradient {
+  animation: gradient-shift 8s ease infinite;
+  background-size: 200% 200%;
+}
+
+/* Glass effect */
+.bg-glass {
+  background: rgba(23, 23, 23, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Text gradient */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #1DB954, #4CAF50);
+}
+
+/* Shadow effects */
+.shadow-spotify {
+  box-shadow: 0 4px 20px rgba(29, 185, 84, 0.15);
+}
+
+/* Transition effects */
+.hover-scale {
+  transition: transform 0.2s ease-in-out;
+}
+
+.hover-scale:hover {
+  transform: scale(1.03);
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-hover:hover {
+  box-shadow: 0 10px 15px rgba(29, 185, 84, 0.2);
+  transform: translateY(-5px);
+}
+
+/* Fade in animation */
+.animate-fade-in {
+  animation: fade-in 0.5s ease-in-out forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
