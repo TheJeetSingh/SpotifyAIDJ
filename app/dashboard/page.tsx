@@ -564,7 +564,7 @@ export default function Dashboard() {
                       max="20"
                       value={songCount}
                       onChange={(e) => setSongCount(Number(e.target.value))}
-                      className="w-full h-2 bg-spotify-gray rounded-lg appearance-none cursor-pointer accent-spotify-green"
+                      className="w-full"
                     />
                     <span className="ml-3 bg-spotify-green/20 px-2 py-1 min-w-[40px] text-center rounded-md border border-spotify-green/30">
                       {songCount}
