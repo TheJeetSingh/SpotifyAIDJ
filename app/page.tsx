@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // import Image from 'next/image'; // Removed as it's unused
 import { useRouter } from 'next/navigation';
 
@@ -9,8 +9,20 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [activePattern, setActivePattern] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const waveAnimationConfig = useRef<Array<{height: string, delay: string, duration: string}>>([]);
 
   useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true);
+    
+    // Generate wave animation config
+    waveAnimationConfig.current = Array(40).fill(0).map((_, i) => ({
+      height: `${Math.floor(Math.random() * 60) + 10}%`,
+      delay: `${i * 0.05}s`,
+      duration: `${Math.random() * 0.7 + 0.5}s`
+    }));
+
     // Trigger animation after component mounts
     setIsVisible(true);
 
@@ -54,17 +66,30 @@ export default function Home() {
         
         {/* Sound wave visualization effect */}
         <div className="absolute bottom-0 left-0 w-full h-16 flex items-end justify-center">
-          {[...Array(40)].map((_, i) => (
-            <div 
-              key={i} 
-              className="w-1 mx-px bg-spotify-green opacity-20 rounded-t-full animate-wave"
-              style={{
-                height: `${Math.floor(Math.random() * 60) + 10}%`,
-                animationDelay: `${i * 0.05}s`,
-                animationDuration: `${Math.random() * 0.7 + 0.5}s`
-              }}
-            ></div>
-          ))}
+          {isHydrated ? 
+            [...Array(40)].map((_, i) => (
+              <div 
+                key={i} 
+                className="w-1 mx-px bg-spotify-green opacity-20 rounded-t-full animate-wave"
+                style={{
+                  height: waveAnimationConfig.current[i]?.height || '30%',
+                  animationDelay: waveAnimationConfig.current[i]?.delay || `${i * 0.05}s`,
+                  animationDuration: waveAnimationConfig.current[i]?.duration || '0.7s'
+                }}
+              ></div>
+            ))
+            :
+            // Static initial render for server
+            [...Array(40)].map((_, i) => (
+              <div 
+                key={i} 
+                className="w-1 mx-px bg-spotify-green opacity-20 rounded-t-full"
+                style={{
+                  height: '30%'
+                }}
+              ></div>
+            ))
+          }
         </div>
       </div>
       
