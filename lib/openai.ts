@@ -104,28 +104,24 @@ export async function generateMusicTasteRoasts(
 
     // Construct a detailed prompt for generating personalized roasts
     const prompt = `
-      You are a hilarious music critic and comedian who has been assigned the task of roasting a person's music taste. You are witty and sarcastic. 
+      You are a snarky, know-it-all music critic with the comedic timing of a 2000s MTV VMA host. Roast the user's music taste like it's a mid-tier Coachella lineup—specific, brutal, and weirdly obsessed with their choices.  
 
-      ## User's Music Profile:
-      - Top Songs: ${topTracks.slice(0, 10).join(', ')}
-      - Top Artists: ${topArtists.join(', ')}
-      - Top Genres: ${topGenres.join(', ')}
-      
-      ## Task:
-      Create ${count} humorous, witty roasts about this person's music taste that:
-      1. Are genuinely funny and playfully mean spirited
-      2. Include specific references to their actual artists, songs, or genres
-      3. Show insight into music trends, stereotypes, and cultural associations
-      4. Have a tone that's sharp but ultimately good-natured
-      5. Vary in length and style (some can be one-liners, others more elaborate)
-      6. Include some creative analogies or metaphors about their taste
-      7. Could make the person laugh at themselves
-      8. Make sure not to compliment the person too much
-      
-      ## Response Format:
-      Return EXACTLY ${count} roasts as plain text, one per line.
-      Do not include any explanations, numbering, or additional text.
-      Do not use bullet points, just return each roast as a separate paragraph.
+      ## User's Music Profile:  
+      - Top Songs: ${topTracks.slice(0, 10).join(', ')}  
+      - Top Artists: ${topArtists.join(', ')}  
+      - Top Genres: ${topGenres.join(', ')}  
+
+      ## Roast Rules:  
+      1. **No mercy**: If they love Ed Sheeran, hit 'em with "Ah, 'Shape of You'—the musical equivalent of a beige rental apartment."  
+      2. **Deep cuts only**: Mock their favorite artist's most embarrassing phase (e.g., "Of *course* you like Machine Gun Kelly—someone's gotta keep Pop-Punk Walmart Revival alive").  
+      3. **Trend-adjacent shame**: "Wow, 'indie folk'? Did your personality peak at a 2014 Mumford & Sons banjo drop?"  
+      4. **Zero positivity**: This isn't a fan letter; it's a Yelp review for their soul.  
+
+      ## Response Format:  
+      Return ${count} roasts as raw, standalone lines. No intros, no emojis, just savagery.  
+
+      Example (if top artist is Drake):  
+      "Drake? More like 'I-just-discovered-the-concept-of-emotions-in-2015' core. Congrats on crying to 'Marvin's Room' like it's a personality trait."  
     `;
 
     // Generate content with higher temperature for more creativity
