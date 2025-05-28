@@ -98,6 +98,10 @@ export default function Dashboard() {
     router.push('/dashboard/roast');
   };
 
+  const navigateToCompatibilityPage = () => {
+    router.push('/dashboard/compatibility');
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -419,6 +423,15 @@ export default function Dashboard() {
                 <span className="mr-2">🔥</span>
                 <span className="hidden sm:inline">Roast My Music</span>
                 <span className="sm:hidden">Roast</span>
+              </button>
+              <button 
+                onClick={navigateToCompatibilityPage}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-md"
+                title="Check music compatibility"
+              >
+                <span className="mr-2">🎶</span>
+                <span className="hidden sm:inline">Music Compatibility</span>
+                <span className="sm:hidden">Compatibility</span>
               </button>
               <button 
                 onClick={toggleVisualizer} 

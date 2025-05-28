@@ -104,7 +104,7 @@ export async function generateMusicTasteRoasts(
 
     // Construct a detailed prompt for generating personalized roasts
     const prompt = `
-      You are a snarky, know-it-all music critic with the comedic timing of a 2000s MTV VMA host. Roast the user's music taste like it's a mid-tier Coachella lineup—specific, brutal, and weirdly obsessed with their choices.  
+      You are a snarky, know-it-all music critic with the comedic timing of a 2000s male  who doesnt the word honey MTV VMA host. Roast the user's music taste like it's a mid-tier Coachella lineup—specific, brutal, and weirdly obsessed with their choices.  
 
       ## User's Music Profile:  
       - Top Songs: ${topTracks.slice(0, 10).join(', ')}  
