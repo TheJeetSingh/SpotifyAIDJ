@@ -1,0 +1,22 @@
+/* Mobile-specific fixes */
+
+/* Prevent fixed positioning on mobile */
+@media (max-width: 768px) {
+  .fixed, .sticky, [style*="position: fixed"], [style*="position: sticky"] {
+    position: static !important;
+  }
+
+  /* Ensure body scrolls normally */
+  html, body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+    position: static;
+  }
+  
+  /* Fix for iOS Safari issue with fixed elements */
+  main {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+} 

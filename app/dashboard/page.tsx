@@ -94,6 +94,10 @@ export default function Dashboard() {
     type: 'info' as 'success' | 'error' | 'info' | 'warning'
   });
 
+  const navigateToRoastPage = () => {
+    router.push('/dashboard/roast');
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -387,34 +391,44 @@ export default function Dashboard() {
       {/* Header */}
       <header className="bg-glass backdrop-blur-md sticky top-0 z-10 border-b border-gray-800/50">
         <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {user?.images?.[0]?.url && (
+          <div className="flex items-center gap-4">
+            {user?.images?.[0]?.url && (
               <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-spotify-green shadow-spotify animate-pulse-spotify">
-            <Image
-              src={user.images[0].url}
-              alt="Profile"
+                <Image
+                  src={user.images[0].url}
+                  alt="Profile"
                   width={48}
                   height={48}
-              className="rounded-full"
-            />
+                  className="rounded-full"
+                />
               </div>
-          )}
+            )}
             <h1 className="text-xl font-semibold">Welcome, <span className="text-gradient">{user?.display_name}</span></h1>
-        </div>
-        <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold text-gradient animate-gradient">
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-gradient animate-gradient hidden md:block">
               Spotify AI DJ
-          </h2>
+            </h2>
             <div className="flex space-x-2">
-          <button 
+              <button 
+                onClick={navigateToRoastPage} 
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-red-600 to-yellow-600 text-white rounded-full hover:from-red-700 hover:to-yellow-700 transition-all duration-300 shadow-md"
+                title="Get your music taste roasted"
+              >
+                <span className="mr-2">🔥</span>
+                <span className="hidden sm:inline">Roast My Music</span>
+                <span className="sm:hidden">Roast</span>
+              </button>
+              <button 
                 onClick={toggleVisualizer} 
                 className={`p-2 rounded-full transition-all ${visualizerActive ? 'bg-spotify-green text-white shadow-spotify' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
                 title="Toggle music visualizer"
-          >
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
-          </button>
+              </button>
             </div>
           </div>
         </div>

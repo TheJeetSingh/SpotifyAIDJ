@@ -78,4 +78,101 @@ export async function generatePlaylistRecommendation(
     console.error('Error generating recommendations with Gemini:', error);
     return [];
   }
+}
+
+export async function generateMusicTasteRoasts(
+  topTracks: string[],
+  topArtists: string[],
+  topGenres: string[],
+  count: number = 5
+): Promise<string[]> {
+  try {
+    // Use the gemini-1.5-flash-latest model for creative content
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    
+    // Configure safety settings to allow humor while blocking harmful content
+    const safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+    ];
+
+    // Construct a detailed prompt for generating personalized roasts
+    const prompt = `
+      You are a hilarious music critic and comedian who has been assigned the task of roasting a person's music taste. You are witty and sarcastic. 
+
+      ## User's Music Profile:
+      - Top Songs: ${topTracks.slice(0, 10).join(', ')}
+      - Top Artists: ${topArtists.join(', ')}
+      - Top Genres: ${topGenres.join(', ')}
+      
+      ## Task:
+      Create ${count} humorous, witty roasts about this person's music taste that:
+      1. Are genuinely funny and playfully mean spirited
+      2. Include specific references to their actual artists, songs, or genres
+      3. Show insight into music trends, stereotypes, and cultural associations
+      4. Have a tone that's sharp but ultimately good-natured
+      5. Vary in length and style (some can be one-liners, others more elaborate)
+      6. Include some creative analogies or metaphors about their taste
+      7. Could make the person laugh at themselves
+      8. Make sure not to compliment the person too much
+      
+      ## Response Format:
+      Return EXACTLY ${count} roasts as plain text, one per line.
+      Do not include any explanations, numbering, or additional text.
+      Do not use bullet points, just return each roast as a separate paragraph.
+    `;
+
+    // Generate content with higher temperature for more creativity
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      safetySettings,
+      generationConfig: {
+        temperature: 0.9, // Higher temperature for more creative responses
+        maxOutputTokens: 1000,
+      },
+    });
+
+    const response = result.response;
+    const text = response.text();
+    
+    if (!text) return [];
+    
+    // Parse the results, splitting on new lines while preserving paragraphs
+    const roasts = text.split('\n\n')
+      .map(paragraph => paragraph.trim())
+      .filter(roast => roast !== '')
+      .slice(0, count); // Ensure we have exactly the requested number
+    
+    // If we don't have enough roasts, add some fallback options
+    const fallbackRoasts = [
+      `Your music taste is what I'd expect from someone who thinks "eclectic" means "I like both Taylor Swift and Taylor Swift's remixes."`,
+      `Listening to ${topArtists[0] || 'your favorite artists'} doesn't make you interesting, it makes you a walking algorithm recommendation.`,
+      `Your playlist screams "I base my entire personality on what the cool kids listened to five years ago."`,
+      `${topGenres[0] || 'That genre'} fans like you are why musicians consider a career change to accounting.`,
+      `I've seen more musical range in a car alarm than in your listening history.`
+    ];
+    
+    while (roasts.length < count) {
+      roasts.push(fallbackRoasts[roasts.length % fallbackRoasts.length]);
+    }
+    
+    return roasts;
+  } catch (error) {
+    console.error('Error generating roasts with Gemini:', error);
+    
+    // Return fallback roasts if AI generation fails
+    return [
+      `Your music taste is what I'd expect from someone who thinks "eclectic" means "I like both Taylor Swift and Taylor Swift's remixes."`,
+      `I see you've carefully curated your music with all the precision of a blindfolded dart player.`,
+      `Your playlist is the audio equivalent of a beige wall in a doctor's waiting room.`,
+      `Congratulations on having the musical taste of a middle schooler trying to impress their crush.`,
+      `I've heard more musical diversity in an elevator than in your entire listening history.`
+    ].slice(0, count);
+  }
 } 
