@@ -189,7 +189,7 @@ export default function RoastMyMusic() {
               <div className="min-h-[200px] flex items-center justify-center">
                 <div className="text-center">
                   <p className="text-2xl sm:text-3xl font-semibold mb-8 italic">
-                    "{roastData.roasts[currentRoastIndex]}"
+                    &quot;{roastData.roasts[currentRoastIndex]}&quot;
                   </p>
                   
                   <div className="flex justify-center space-x-4 mt-4">

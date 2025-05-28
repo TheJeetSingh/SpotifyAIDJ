@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 // import Image from 'next/image'; // Removed as it's unused
 import { useRouter } from 'next/navigation';
 import ErrorBoundary from './components/ErrorBoundary';
