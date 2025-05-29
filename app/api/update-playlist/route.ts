@@ -21,21 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid playlist data' }, { status: 400 });
     }
 
-    // Set the access token
     spotifyApi.setAccessToken(accessToken);
     
     try {
-      // Get the current playlist to verify ownership and access (optional)
-      // const playlistResponse = await spotifyApi.getPlaylist(playlistId);
-      // const _playlist = playlistResponse.body; // Prefix with _ if planning to use later
-      await spotifyApi.getPlaylist(playlistId); // Call to ensure playlist exists and is accessible
+      await spotifyApi.getPlaylist(playlistId);
       
-      // First, clear the existing tracks from the playlist
       await spotifyApi.replaceTracksInPlaylist(playlistId, []);
       
-      // Search for each track and add it to the playlist
       const searchPromises = tracks.map(async (track: Track) => {
-        // Handle different track formats gracefully
         let searchQuery = '';
         if (typeof track === 'string') {
           searchQuery = track;
@@ -62,7 +55,6 @@ export async function POST(request: NextRequest) {
       
       const trackUris = (await Promise.all(searchPromises)).filter(Boolean);
       
-      // Add the tracks to the playlist in the new order
       if (trackUris.length > 0) {
         await spotifyApi.addTracksToPlaylist(
           playlistId,
@@ -70,7 +62,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Get the updated playlist
       const updatedPlaylistResponse = await spotifyApi.getPlaylist(playlistId);
       
       return NextResponse.json({

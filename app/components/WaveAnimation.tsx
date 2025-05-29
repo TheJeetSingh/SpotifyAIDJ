@@ -10,7 +10,6 @@ const WaveAnimation: React.FC<WaveAnimationProps> = ({ count = 40 }) => {
   const waveAnimationConfig = useRef<Array<{height: string, delay: string, duration: string}>>([]);
   
   useEffect(() => {
-    // Generate wave animation config
     waveAnimationConfig.current = Array(count).fill(0).map((_, i) => ({
       height: `${Math.floor(Math.random() * 60) + 10}%`,
       delay: `${i * 0.05}s`,

@@ -5,7 +5,6 @@ import spotifyApi from '@/lib/spotify';
 
 export async function POST(req: NextRequest) {
   try {
-    // Get the current user's access token from cookies
     const accessToken = req.cookies.get('spotify_access_token')?.value;
     
     if (!accessToken) {
@@ -15,7 +14,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get the friend code from the request body
     const { friendCode } = await req.json();
     
     if (!friendCode) {
@@ -25,7 +23,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Set up API for current user
     const currentUserApi = new SpotifyWebApi({
       clientId: process.env.SPOTIFY_CLIENT_ID,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
@@ -33,7 +30,6 @@ export async function POST(req: NextRequest) {
     });
     currentUserApi.setAccessToken(accessToken);
 
-    // Verify current user's token is valid
     try {
       await currentUserApi.getMe();
     } catch {
@@ -43,7 +39,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Decode the friend code to get their data
     let decodedFriendCode: string;
     try {
       decodedFriendCode = Buffer.from(friendCode, 'base64').toString('utf-8');
@@ -63,7 +58,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Set up API for friend
     const friendApi = new SpotifyWebApi({
       clientId: process.env.SPOTIFY_CLIENT_ID,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
@@ -71,7 +65,6 @@ export async function POST(req: NextRequest) {
     });
     friendApi.setAccessToken(friendAccessToken);
 
-    // Verify friend's token is valid
     try {
       await friendApi.getMe();
     } catch {
@@ -82,10 +75,8 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Calculate compatibility
       const result = await calculateCompatibility(currentUserApi, friendApi);
 
-      // Get basic user info for both users for the response
       const [currentUser, friendUser] = await Promise.all([
         currentUserApi.getMe(),
         friendApi.getMe()
@@ -124,7 +115,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Generate a shareable friend code for the current user
 export async function GET(req: NextRequest) {
   try {
     const accessToken = req.cookies.get('spotify_access_token')?.value;
@@ -136,20 +126,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Set up Spotify API with the user's access token
     spotifyApi.setAccessToken(accessToken);
     
-    // Verify the token is still valid
     try {
       const user = await spotifyApi.getMe();
       const userId = user.body.id;
       
-      // Create a friend code: userId:accessToken (base64 encoded)
       const friendCode = Buffer.from(`${userId}:${accessToken}`).toString('base64');
       
       return NextResponse.json({ friendCode });
     } catch {
-      // If token verification fails, return 401
       return NextResponse.json(
         { error: 'Invalid access token', details: 'Your session has expired. Please log in again.' },
         { status: 401 }

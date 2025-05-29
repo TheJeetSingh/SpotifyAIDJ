@@ -32,7 +32,6 @@ export default function CompatibilityScore() {
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Fetch the current user's friend code
   const fetchUserFriendCode = async () => {
     try {
       setIsLoading(true);
@@ -51,7 +50,6 @@ export default function CompatibilityScore() {
     }
   };
 
-  // Calculate compatibility with another user
   const calculateCompatibility = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -86,14 +84,12 @@ export default function CompatibilityScore() {
     }
   };
 
-  // Copy friend code to clipboard
   const copyFriendCode = () => {
     navigator.clipboard.writeText(userFriendCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Get color based on score
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-500';
     if (score >= 60) return 'text-emerald-500';
@@ -102,7 +98,6 @@ export default function CompatibilityScore() {
     return 'text-red-500';
   };
 
-  // Get compatibility description
   const getCompatibilityDescription = (score: number) => {
     if (score >= 80) return 'Musical Soulmates';
     if (score >= 60) return 'Great Musical Match';
@@ -111,7 +106,6 @@ export default function CompatibilityScore() {
     return 'Musical Opposites';
   };
 
-  // Format percentage
   const formatPercentage = (value: number) => {
     return `${Math.round(value * 100)}%`;
   };
@@ -123,7 +117,6 @@ export default function CompatibilityScore() {
           Music Compatibility Score
         </h2>
 
-        {/* Your Friend Code */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Your Friend Code</h3>
           
@@ -162,7 +155,6 @@ export default function CompatibilityScore() {
           </p>
         </div>
 
-        {/* Calculate Compatibility Form */}
         <form onSubmit={calculateCompatibility} className="mb-6">
           <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Check Compatibility</h3>
           
@@ -188,7 +180,6 @@ export default function CompatibilityScore() {
           )}
         </form>
 
-        {/* Results */}
         {result && (
           <div className="text-center">
             <div className="flex justify-center items-center mb-4">
@@ -231,7 +222,6 @@ export default function CompatibilityScore() {
               {getCompatibilityDescription(result.score)}
             </p>
 
-            {/* Details Toggle */}
             <button
               onClick={() => setShowDetails(!showDetails)}
               className="flex items-center justify-center mx-auto text-sm text-purple-600 hover:text-purple-800 transition duration-200"
@@ -242,31 +232,30 @@ export default function CompatibilityScore() {
               </span>
             </button>
 
-            {/* Detailed Metrics */}
             {showDetails && (
               <div className="mt-4 border-t border-gray-200 pt-4 text-left">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Artist Overlap</p>
-                    <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    <p className={`text-lg font-semibold ${getScoreColor(result.metrics.artistOverlap * 100)}`}>
                       {formatPercentage(result.metrics.artistOverlap)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Genre Overlap</p>
-                    <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    <p className={`text-lg font-semibold ${getScoreColor(result.metrics.genreOverlap * 100)}`}>
                       {formatPercentage(result.metrics.genreOverlap)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Track Overlap</p>
-                    <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    <p className={`text-lg font-semibold ${getScoreColor(result.metrics.trackOverlap * 100)}`}>
                       {formatPercentage(result.metrics.trackOverlap)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Musical Features</p>
-                    <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Audio Features Score</p>
+                    <p className={`text-lg font-semibold ${getScoreColor(result.metrics.audioFeaturesScore * 100)}`}>
                       {formatPercentage(result.metrics.audioFeaturesScore)}
                     </p>
                   </div>
@@ -278,4 +267,4 @@ export default function CompatibilityScore() {
       </div>
     </div>
   );
-} 
+}

@@ -30,21 +30,16 @@ interface ToastProviderProps {
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   
-  // Use a ref to maintain a history of shown toasts across renders
   const shownToastsRef = useRef<Set<string>>(new Set());
 
   const showToast = (message: string, type: ToastType) => {
-    // Create a unique key for this toast message and type
     const toastKey = `${message}-${type}`;
     
-    // Only show toast if it hasn't been shown before
     if (!shownToastsRef.current.has(toastKey)) {
-      // Mark this toast as shown
       shownToastsRef.current.add(toastKey);
       
       const id = Date.now().toString();
       
-      // Add the new toast and limit to 3 visible at a time
       setToasts(prev => {
         const updatedToasts = [...prev, { id, message, type }];
         return updatedToasts.slice(-3);
@@ -66,7 +61,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
             message={toast.message}
             type={toast.type}
             onClose={() => removeToast(toast.id)}
-            duration={3000 + index * 500} // Stagger durations
+            duration={3000 + index * 500} 
           />
         ))}
       </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp'; // Import sharp
+import sharp from 'sharp';
 
 interface CoverArtRequest {
   mood: string;
@@ -67,13 +67,12 @@ const generateImagePrompt = (data: CoverArtRequest): string => {
     promptSegments.push(genreArtistInspiration);
   }
 
-  // Incorporate user-provided description more directly
   if (description && description.trim() !== '') {
     promptSegments.push(description.trim());
   }
 
   if (songTitles && songTitles.length > 0) {
-    const titleCues = songTitles.slice(0, 2).join(', '); // Use first 1-2 titles for cues
+    const titleCues = songTitles.slice(0, 2).join(', ');
     promptSegments.push(`evoking themes from songs like ${titleCues}`);
   }
   
@@ -87,10 +86,7 @@ const generateImagePrompt = (data: CoverArtRequest): string => {
  * Uses Lorem Picsum to get a random abstract image
  */
 const getFallbackImage = async (): Promise<ArrayBuffer> => {
-  // Get a random seed based on current time
   const seed = Math.floor(Math.random() * 1000);
-  
-  // Use Lorem Picsum for a random artistic image
   const response = await fetch(`https://picsum.photos/seed/${seed}/512/512`);
   
   if (!response.ok) {
@@ -108,7 +104,6 @@ export async function POST(request: NextRequest) {
   }
   
   try {
-    // Get Hugging Face API token from environment variables
     const huggingfaceApiToken = process.env.HUGGINGFACE_API_TOKEN;
     if (!huggingfaceApiToken) {
       return NextResponse.json(
@@ -127,20 +122,17 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Log generation attempt with mood and genre for monitoring
     console.log(`Generating album cover art with mood: ${mood}${genre ? ` and genre: ${genre}` : ''}`);
     if (songTitles && songTitles.length > 0) {
       console.log(`Song titles influencing the cover art: ${songTitles.slice(0, 3).join(', ')}${songTitles.length > 3 ? '...' : ''}`);
     }
     
-    // Generate prompt for the image
     const prompt = generateImagePrompt(body);
     
     let imageBuffer: Buffer;
     let source: 'huggingface' | 'fallback' = 'huggingface';
     
     try {
-      // Try Hugging Face API first
       const hfResponse = await fetch(
         "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-3.5-large",
         {
@@ -152,8 +144,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             inputs: prompt
           }),
-          // Hugging Face API may take some time to generate the image
-          signal: AbortSignal.timeout(60000) // 60 second timeout for potentially larger model
+          signal: AbortSignal.timeout(60000)
         }
       );
       
@@ -163,25 +154,21 @@ export async function POST(request: NextRequest) {
         throw new Error(`Hugging Face API error: ${errorText}`);
       }
       
-      // The response is binary image data
       imageBuffer = Buffer.from(await hfResponse.arrayBuffer());
       
     } catch (error) {
       console.warn("Falling back to alternative image generator:", error);
-      // Use fallback image generator
       imageBuffer = Buffer.from(await getFallbackImage());
       source = 'fallback';
     }
     
-    // Process image for Spotify: convert to JPEG, resize, and ensure under 256KB
     let spotifyReadyBase64 = '';
     try {
         let processedImageBuffer = await sharp(imageBuffer)
-            .jpeg({ quality: 80 }) // Convert to JPEG with quality 80
-            .resize({ width: 512, height: 512, fit: 'cover' }) // Resize if needed
+            .jpeg({ quality: 80 })
+            .resize({ width: 512, height: 512, fit: 'cover' })
             .toBuffer();
 
-        // Check size and reduce quality if necessary
         let quality = 80;
         while (processedImageBuffer.length > 256 * 1024 && quality > 10) {
             quality -= 10;
@@ -194,22 +181,18 @@ export async function POST(request: NextRequest) {
 
         if (processedImageBuffer.length > 256 * 1024) {
             console.warn("Could not reduce image size enough for Spotify cover.");
-            // We might choose not to send a spotifyReadyBase64 in this case, or send it anyway and let Spotify reject it.
-            // For now, we'll send it and log a warning.
         }
         spotifyReadyBase64 = processedImageBuffer.toString('base64');
     } catch (processingError) {
         console.error("Error processing image for Spotify:", processingError);
-        // If processing fails, we won't have a Spotify-ready image.
     }
 
-    // For client display, send original (or fallback) as PNG base64, as it might have better quality
     const displayBase64 = `data:image/${source === 'fallback' ? 'jpeg' : 'png'};base64,${imageBuffer.toString("base64")}`;
     
     return NextResponse.json({
       success: true,
-      imageBase64: displayBase64, // For display on dashboard
-      spotifyReadyBase64: spotifyReadyBase64, // For uploading to Spotify
+      imageBase64: displayBase64,
+      spotifyReadyBase64: spotifyReadyBase64,
       prompt: prompt,
       source: source
     });

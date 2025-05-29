@@ -13,10 +13,8 @@ export async function GET(request: NextRequest) {
     const data = await spotifyApi.refreshAccessToken();
     const { access_token, expires_in } = data.body;
 
-    // Create response with new access token
     const response = NextResponse.json({ success: true });
     
-    // Set the new access token cookie with consistent settings
     response.cookies.set({
       name: 'spotify_access_token',
       value: access_token,
@@ -31,13 +29,11 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Error refreshing token:', error);
-    // If refresh fails, clear both tokens to force re-login
     const response = NextResponse.json(
       { error: 'Failed to refresh token', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 401 }
     );
 
-    // Clear both tokens
     response.cookies.set({
       name: 'spotify_access_token',
       value: '',

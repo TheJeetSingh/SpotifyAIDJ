@@ -12,10 +12,8 @@ export async function GET(request: NextRequest) {
     const authData = await spotifyApi.authorizationCodeGrant(code);
     const { access_token, refresh_token, expires_in } = authData.body;
 
-    // Create response and set cookies
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     
-    // Set cookies with more permissive settings for cross-device compatibility
     response.cookies.set({
       name: 'spotify_access_token',
       value: access_token,
@@ -30,7 +28,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set({
       name: 'spotify_refresh_token',
       value: refresh_token,
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 30, 
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

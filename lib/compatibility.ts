@@ -1,6 +1,5 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 
-// Define interfaces for the compatibility calculations
 interface AudioFeatures {
   danceability: number;
   energy: number;
@@ -43,15 +42,11 @@ interface CompatibilityResult {
   };
 }
 
-/**
- * Calculate music compatibility between two Spotify users
- */
 export async function calculateCompatibility(
   spotify1: SpotifyWebApi,
   spotify2: SpotifyWebApi
 ): Promise<CompatibilityResult> {
   try {
-    // Get top items for both users
     let user1Artists, user2Artists, user1Tracks, user2Tracks;
 
     try {
@@ -72,31 +67,26 @@ export async function calculateCompatibility(
       throw new Error('Failed to fetch top tracks. This could be due to expired tokens or API limits.');
     }
 
-    // Calculate artist overlap
     const artistOverlap = calculateArtistOverlap(
       user1Artists.body.items,
       user2Artists.body.items
     );
 
-    // Calculate genre overlap
     const genreOverlap = calculateGenreOverlap(
       user1Artists.body.items,
       user2Artists.body.items
     );
 
-    // Calculate track overlap
     const trackOverlap = calculateTrackOverlap(
       user1Tracks.body.items,
       user2Tracks.body.items
     );
 
-    // Find shared artists
     const sharedArtists: SharedArtists = {
       exact: [],
       similar: []
     };
 
-    // Find exact artist matches
     const user1ArtistIds = new Set(user1Artists.body.items.map(a => a.id));
     user2Artists.body.items.forEach(artist => {
       if (user1ArtistIds.has(artist.id)) {
@@ -108,7 +98,6 @@ export async function calculateCompatibility(
       }
     });
 
-    // Find similar artists (shared genres)
     user1Artists.body.items.forEach(artist1 => {
       user2Artists.body.items.forEach(artist2 => {
         if (artist1.id !== artist2.id) {
@@ -136,7 +125,6 @@ export async function calculateCompatibility(
       console.warn('Failed to calculate audio features similarity:', error);
     }
 
-    // Calculate final score
     const weights = {
       artists: 0.3,
       genres: 0.3,
@@ -158,10 +146,8 @@ export async function calculateCompatibility(
       audioFeaturesScore * weights.audioFeatures) * 100
     );
 
-    // Generate fun messages
     const messages = generateCompatibilityMessages(finalScore, sharedArtists);
 
-    // Create compatibility playlist
     const playlistId = await createCompatibilityPlaylist(
       spotify1,
       spotify2,
@@ -188,9 +174,6 @@ export async function calculateCompatibility(
   }
 }
 
-/**
- * Calculate the overlap between two users' top artists
- */
 function calculateArtistOverlap(
   artists1: SpotifyApi.ArtistObjectFull[], 
   artists2: SpotifyApi.ArtistObjectFull[]
@@ -198,34 +181,25 @@ function calculateArtistOverlap(
   const set1 = new Set(artists1.map(artist => artist.id));
   const set2 = new Set(artists2.map(artist => artist.id));
   
-  // Calculate Jaccard similarity (intersection size / union size)
   const intersection = new Set([...set1].filter(x => set2.has(x)));
   const union = new Set([...set1, ...set2]);
   
   return intersection.size / union.size;
 }
 
-/**
- * Calculate the overlap between two users' artists' genres
- */
 function calculateGenreOverlap(
   artists1: SpotifyApi.ArtistObjectFull[], 
   artists2: SpotifyApi.ArtistObjectFull[]
 ): number {
-  // Extract all genres from both users' artists
   const genres1 = new Set(artists1.flatMap(artist => artist.genres));
   const genres2 = new Set(artists2.flatMap(artist => artist.genres));
   
-  // Calculate Jaccard similarity for genres
   const intersection = new Set([...genres1].filter(x => genres2.has(x)));
   const union = new Set([...genres1, ...genres2]);
   
   return intersection.size / union.size;
 }
 
-/**
- * Calculate the overlap between two users' top tracks
- */
 function calculateTrackOverlap(
   tracks1: SpotifyApi.TrackObjectFull[], 
   tracks2: SpotifyApi.TrackObjectFull[]
@@ -233,16 +207,12 @@ function calculateTrackOverlap(
   const set1 = new Set(tracks1.map(track => track.id));
   const set2 = new Set(tracks2.map(track => track.id));
   
-  // Calculate Jaccard similarity for tracks
   const intersection = new Set([...set1].filter(x => set2.has(x)));
   const union = new Set([...set1, ...set2]);
   
   return intersection.size / union.size;
 }
 
-/**
- * Calculate average audio features for a list of tracks
- */
 function calculateAverageFeatures(features: SpotifyApi.AudioFeaturesObject[]): AudioFeatures {
   const sum = features.reduce(
     (acc, curr) => {
@@ -252,7 +222,7 @@ function calculateAverageFeatures(features: SpotifyApi.AudioFeaturesObject[]): A
         tempo: acc.tempo + curr.tempo,
         valence: acc.valence + curr.valence,
         acousticness: acc.acousticness + curr.acousticness,
-        instrumentalness: acc.instrumentalness + curr.instrumentalness
+        instrumentalness: acc.instrumentalness + curr.instrumentalness,
       };
     },
     {
@@ -261,125 +231,113 @@ function calculateAverageFeatures(features: SpotifyApi.AudioFeaturesObject[]): A
       tempo: 0,
       valence: 0,
       acousticness: 0,
-      instrumentalness: 0
+      instrumentalness: 0,
     }
   );
 
-  const count = features.length;
+  const count = features.length || 1;
   return {
     danceability: sum.danceability / count,
     energy: sum.energy / count,
     tempo: sum.tempo / count,
     valence: sum.valence / count,
     acousticness: sum.acousticness / count,
-    instrumentalness: sum.instrumentalness / count
+    instrumentalness: sum.instrumentalness / count,
   };
 }
 
-/**
- * Calculate similarity between two sets of audio features
- */
 async function calculateAudioFeaturesSimilarity(
   spotify1: SpotifyWebApi,
   spotify2: SpotifyWebApi,
   trackIds1: string[],
   trackIds2: string[]
 ): Promise<number> {
-  // Spotify API can only process 100 tracks at a time
-  const features1Response = await spotify1.getAudioFeaturesForTracks(trackIds1.slice(0, 100));
-  const features2Response = await spotify2.getAudioFeaturesForTracks(trackIds2.slice(0, 100));
-  
-  const features1 = features1Response.body.audio_features.filter(Boolean);
-  const features2 = features2Response.body.audio_features.filter(Boolean);
-  
-  // Calculate average audio features for each user
-  const avg1 = calculateAverageFeatures(features1);
-  const avg2 = calculateAverageFeatures(features2);
-  
-  // Calculate similarity using normalized Euclidean distance
-  return calculateFeatureSimilarity(avg1, avg2);
+  try {
+    if (!trackIds1.length || !trackIds2.length) return 0;
+
+    const [features1Res, features2Res] = await Promise.all([
+      spotify1.getAudioFeaturesForTracks(trackIds1.slice(0, 100)), 
+      spotify2.getAudioFeaturesForTracks(trackIds2.slice(0, 100)),
+    ]);
+
+    const features1 = features1Res.body.audio_features.filter(f => f);
+    const features2 = features2Res.body.audio_features.filter(f => f);
+
+    if (!features1.length || !features2.length) return 0;
+
+    const avgFeatures1 = calculateAverageFeatures(features1);
+    const avgFeatures2 = calculateAverageFeatures(features2);
+
+    return calculateFeatureSimilarity(avgFeatures1, avgFeatures2);
+  } catch (error) {
+    console.error('Error calculating audio features similarity:', error);
+    return 0; 
+  }
 }
 
-/**
- * Calculate similarity between two audio feature sets
- * Returns a value between 0 (completely different) and 1 (identical)
- */
 function calculateFeatureSimilarity(features1: AudioFeatures, features2: AudioFeatures): number {
-  // Normalize tempo to 0-1 range (most songs are between 60-180 BPM)
-  const normalizedTempo1 = Math.min(features1.tempo, 180) / 180;
-  const normalizedTempo2 = Math.min(features2.tempo, 180) / 180;
-  
-  // Calculate squared differences for each feature
-  const danceabilityDiff = Math.pow(features1.danceability - features2.danceability, 2);
-  const energyDiff = Math.pow(features1.energy - features2.energy, 2);
-  const tempoDiff = Math.pow(normalizedTempo1 - normalizedTempo2, 2);
-  const valenceDiff = Math.pow(features1.valence - features2.valence, 2);
-  const acousticnessDiff = Math.pow(features1.acousticness - features2.acousticness, 2);
-  const instrumentalnessDiff = Math.pow(features1.instrumentalness - features2.instrumentalness, 2);
-  
-  // Sum of squared differences
-  const sumSquaredDiff = danceabilityDiff + energyDiff + tempoDiff + valenceDiff + 
-                         acousticnessDiff + instrumentalnessDiff;
-  
-  // Normalized Euclidean distance (0 to 1, where 1 is most similar)
-  const distance = Math.sqrt(sumSquaredDiff / 6);
-  return 1 - distance;
+  const diffs = [
+    Math.abs(features1.danceability - features2.danceability),
+    Math.abs(features1.energy - features2.energy),
+    Math.abs(features1.valence - features2.valence),
+    Math.abs(features1.acousticness - features2.acousticness),
+    Math.abs(features1.instrumentalness - features2.instrumentalness),
+  ];
+
+  const normalizedTempoDiff = Math.abs(features1.tempo - features2.tempo) / 200; 
+  diffs.push(normalizedTempoDiff);
+
+  const similarity = 1 - (diffs.reduce((a, b) => a + b, 0) / diffs.length);
+  return Math.max(0, similarity);
 }
 
-/**
- * Generate a fun message based on compatibility score
- */
 function generateCompatibilityMessages(score: number, sharedArtists: SharedArtists): { 
   overall: string; 
   artistMessage: string;
   genreMessage: string;
   playlistMessage: string;
 } {
-  const messages = {
-    high: [
-      "🎵 You two are basically musical soulmates! The universe is singing your harmony!",
-      "🌟 Your music taste is so in sync, you might be long-lost playlist twins!",
-      "🎸 Mind-blowing musical chemistry alert! You should start a band together!"
-    ],
-    medium: [
-      "🎧 Not bad at all! Your musical wavelengths are definitely vibing!",
-      "🎪 You've got a fun musical friendship brewing here!",
-      "🌈 Different enough to be interesting, similar enough to share aux cord duties!"
-    ],
-    low: [
-      "🎭 Opposites attract! Your diverse tastes could make for some interesting music exchanges!",
-      "🎪 Well, at least you'll always have something new to show each other!",
-      "🌱 Think of this as an opportunity to expand your musical horizons!"
-    ]
-  };
+  let overall = '';
+  let artistMessage = '';
+  let genreMessage = '';
+  let playlistMessage = '';
 
-  const category = score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low';
-  const randomIndex = Math.floor(Math.random() * messages[category].length);
+  if (score >= 80) {
+    overall = "Wow, you two are practically musical soulmates! Your tastes align beautifully.";
+  } else if (score >= 60) {
+    overall = "You've got great compatibility! There's a lot of common ground here.";
+  } else if (score >= 40) {
+    overall = "Decent compatibility. You share some common artists and genres, but there's room to explore!";
+  } else {
+    overall = "Your tastes are quite different, but hey, opposites attract, right? Or maybe not in music...";
+  }
 
-  const artistCount = sharedArtists.exact.length;
-  const artistMessage = artistCount > 0
-    ? `You both groove to ${artistCount} of the same artists! ${sharedArtists.exact.slice(0, 3).map(a => a.name).join(', ')} would be proud! 🎸`
-    : "Time to introduce each other to your favorite artists! 🎤";
+  if (sharedArtists.exact.length > 0) {
+    const topShared = sharedArtists.exact.slice(0, 3).map(a => a.name).join(', ');
+    artistMessage = `You both love ${topShared}! That's a great starting point.`;
+    if (sharedArtists.exact.length > 3) {
+      artistMessage += ` And ${sharedArtists.exact.length - 3} more!`;
+    }
+  } else if (sharedArtists.similar.length > 0) {
+    const firstSimilar = sharedArtists.similar[0];
+    artistMessage = `While you don't share exact top artists, you both like artists in the ${firstSimilar.sharedGenres[0]} genre, like ${firstSimilar.user1Artist.name} and ${firstSimilar.user2Artist.name}.`;
+  } else {
+    artistMessage = "You don't have many overlapping top artists. Time to introduce each other to some new tunes!";
+  }
+  
+  if (score >= 70) {
+    genreMessage = "Your genre preferences are a strong match!";
+  } else if (score >= 50) {
+    genreMessage = "You've got some solid genre overlap.";
+  } else {
+    genreMessage = "Your preferred genres might be a bit different, offering a chance for musical discovery.";
+  }
 
-  const genreMessage = sharedArtists.similar.length > 0
-    ? "You've got some genre chemistry going on! 🎵"
-    : "Your genre tastes are like parallel universes - fascinating! 🌌";
+  playlistMessage = "We've created a special 'Compatibility Mix' for you. Check it out on Spotify!";
 
-  const playlistMessage = score >= 60
-    ? "I've crafted a playlist that celebrates your shared music vibes! 🎶"
-    : "I've made you a playlist to bridge your musical worlds! 🌉";
-
-  return {
-    overall: messages[category][randomIndex],
-    artistMessage,
-    genreMessage,
-    playlistMessage
-  };
+  return { overall, artistMessage, genreMessage, playlistMessage };
 }
 
-/**
- * Create a compatibility playlist for both users
- */
 async function createCompatibilityPlaylist(
   spotify1: SpotifyWebApi,
   spotify2: SpotifyWebApi,
@@ -388,43 +346,48 @@ async function createCompatibilityPlaylist(
   user2Tracks: SpotifyApi.TrackObjectFull[]
 ): Promise<string | undefined> {
   try {
-    // Get current user's info
-    const me = await spotify1.getMe();
-    
-    // Create a new playlist
-    const playlistResponse = await spotify1.createPlaylist(me.body.id, {
-      description: '🎵 Your Musical Connection Playlist 🎭\nA specially curated playlist celebrating your musical compatibility! Mix of shared favorites and recommended discoveries.',
-      public: false,
-      collaborative: false
+    const user1 = await spotify1.getMe();
+    const user2 = await spotify2.getMe();
+
+    const playlistName = `Music Match: ${user1.body.display_name} & ${user2.body.display_name}`;
+    const playlistDescription = `A playlist celebrating the musical compatibility between ${user1.body.display_name} and ${user2.body.display_name}. Score: ${await calculateCompatibility(spotify1, spotify2).then(r => r.score)}%`;
+
+    const { body: playlist } = await spotify1.createPlaylist(playlistName, {
+      description: playlistDescription,
+      public: false, 
     });
 
-    if (!playlistResponse || !playlistResponse.body) {
-      throw new Error('Failed to create playlist');
+    let trackUris: string[] = [];
+
+    const sharedTrackIds = new Set(
+      user1Tracks.filter(t1 => user2Tracks.some(t2 => t2.id === t1.id)).map(t => t.id)
+    );
+    trackUris.push(...Array.from(sharedTrackIds).map(id => `spotify:track:${id}`).slice(0, 20));
+
+    if (trackUris.length < 30 && sharedArtists.exact.length > 0) {
+      const artistTrackPromises = sharedArtists.exact.slice(0, 5).map(async (artist) => {
+        const tracks1 = await spotify1.getArtistTopTracks(artist.id, user1.body.country || 'US');
+        const tracks2 = await spotify2.getArtistTopTracks(artist.id, user2.body.country || 'US');
+        return [...tracks1.body.tracks, ...tracks2.body.tracks]
+          .map(t => t.uri)
+          .filter(uri => !trackUris.includes(uri));
+      });
+      const artistTracks = (await Promise.all(artistTrackPromises)).flat();
+      trackUris.push(...[...new Set(artistTracks)].slice(0, 30 - trackUris.length));
     }
 
-    const playlist = playlistResponse.body;
-    
-    // Update playlist name separately since it's not supported in creation options
-    await spotify1.changePlaylistDetails(playlist.id, {
-      name: '🎵 Your Musical Connection Playlist 🎭'
-    });
-    
-    // Collect tracks to add
-    const tracksToAdd = new Set<string>();
-    
-    // Add some tracks from shared artists
-    for (const artist of sharedArtists.exact) {
-      const topTracks = await spotify1.getArtistTopTracks(artist.id, 'US');
-      topTracks.body.tracks.slice(0, 2).forEach(track => tracksToAdd.add(track.uri));
+    if (trackUris.length < 30) {
+      const combinedTopTracks = [...user1Tracks, ...user2Tracks]
+        .sort(() => 0.5 - Math.random()) 
+        .map(t => t.uri)
+        .filter(uri => !trackUris.includes(uri));
+      trackUris.push(...[...new Set(combinedTopTracks)].slice(0, 30 - trackUris.length));
     }
+    
+    trackUris = [...new Set(trackUris)].slice(0,50);
 
-    // Add some tracks from each user's top tracks
-    user1Tracks.slice(0, 5).forEach(track => tracksToAdd.add(track.uri));
-    user2Tracks.slice(0, 5).forEach(track => tracksToAdd.add(track.uri));
-
-    // Add tracks to playlist
-    if (tracksToAdd.size > 0) {
-      await spotify1.addTracksToPlaylist(playlist.id, Array.from(tracksToAdd));
+    if (trackUris.length > 0) {
+      await spotify1.addTracksToPlaylist(playlist.id, trackUris);
     }
 
     return playlist.id;
@@ -432,4 +395,4 @@ async function createCompatibilityPlaylist(
     console.error('Error creating compatibility playlist:', error);
     return undefined;
   }
-} 
+}

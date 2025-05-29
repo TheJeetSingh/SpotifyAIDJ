@@ -18,7 +18,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 3000 }
     setIsExiting(true);
     setTimeout(() => {
       onClose();
-    }, 300); // Wait for exit animation
+    }, 300); 
   }, [onClose]);
 
   useEffect(() => {

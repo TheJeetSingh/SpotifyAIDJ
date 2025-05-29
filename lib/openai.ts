@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
-// Initialize the Gemini API
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function generatePlaylistRecommendation(
@@ -11,10 +11,8 @@ export async function generatePlaylistRecommendation(
   favoriteArtists: string[] = []
 ): Promise<string[]> {
   try {
-    // For text-only input, use the gemini-1.5-flash-latest model
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
-    // Configure safety settings (optional)
     const safetySettings = [
       {
         category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -26,7 +24,6 @@ export async function generatePlaylistRecommendation(
       },
     ];
 
-    // Construct a more detailed prompt
     const prompt = `
       You are an expert music curator and DJ with deep knowledge of music history, genres, artists, and song relationships.
       
@@ -55,13 +52,12 @@ export async function generatePlaylistRecommendation(
       Do not include any explanations, numbering, or additional text.
     `;
 
-    // Generate content
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       safetySettings,
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 800, // Increased for longer responses
+        maxOutputTokens: 800,
       },
     });
 
@@ -70,7 +66,6 @@ export async function generatePlaylistRecommendation(
     
     if (!text) return [];
     
-    // Parse the results
     return text.split('\n')
       .map(line => line.trim())
       .filter(line => line !== '' && !line.startsWith('•') && !line.startsWith('-'));
@@ -87,10 +82,8 @@ export async function generateMusicTasteRoasts(
   count: number = 5
 ): Promise<string[]> {
   try {
-    // Use the gemini-1.5-flash-latest model for creative content
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
-    // Configure safety settings to allow humor while blocking harmful content
     const safetySettings = [
       {
         category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -102,7 +95,6 @@ export async function generateMusicTasteRoasts(
       },
     ];
 
-    // Construct a detailed prompt for generating personalized roasts
     const prompt = `
       You are a snarky, know-it-all music critic with the comedic timing of a 2000s male  who doesnt the word honey MTV VMA host. Roast the user's music taste like it's a mid-tier Coachella lineup—specific, brutal, and weirdly obsessed with their choices.  
 
@@ -124,12 +116,11 @@ export async function generateMusicTasteRoasts(
       "Drake? More like 'I-just-discovered-the-concept-of-emotions-in-2015' core. Congrats on crying to 'Marvin's Room' like it's a personality trait."  
     `;
 
-    // Generate content with higher temperature for more creativity
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       safetySettings,
       generationConfig: {
-        temperature: 0.9, // Higher temperature for more creative responses
+        temperature: 0.9,
         maxOutputTokens: 1000,
       },
     });
@@ -139,13 +130,11 @@ export async function generateMusicTasteRoasts(
     
     if (!text) return [];
     
-    // Parse the results, splitting on new lines while preserving paragraphs
     const roasts = text.split('\n\n')
       .map(paragraph => paragraph.trim())
       .filter(roast => roast !== '')
-      .slice(0, count); // Ensure we have exactly the requested number
+      .slice(0, count);
     
-    // If we don't have enough roasts, add some fallback options
     const fallbackRoasts = [
       `Your music taste is what I'd expect from someone who thinks "eclectic" means "I like both Taylor Swift and Taylor Swift's remixes."`,
       `Listening to ${topArtists[0] || 'your favorite artists'} doesn't make you interesting, it makes you a walking algorithm recommendation.`,
@@ -162,7 +151,6 @@ export async function generateMusicTasteRoasts(
   } catch (error) {
     console.error('Error generating roasts with Gemini:', error);
     
-    // Return fallback roasts if AI generation fails
     return [
       `Your music taste is what I'd expect from someone who thinks "eclectic" means "I like both Taylor Swift and Taylor Swift's remixes."`,
       `I see you've carefully curated your music with all the precision of a blindfolded dart player.`,
