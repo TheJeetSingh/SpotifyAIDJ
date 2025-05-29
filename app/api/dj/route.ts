@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { songIds, mood, genre, songCount, selectedArtistIds } = body;
+    const { songIds, mood, genre, songCount, selectedArtistIds, coverImageBase64 } = body;
     
     if (!songIds || !Array.isArray(songIds) || songIds.length === 0) {
       return NextResponse.json({ error: 'Invalid song selection' }, { status: 400 });
@@ -114,6 +114,23 @@ export async function POST(request: NextRequest) {
       });
       
       createdPlaylist = playlistResponse.body;
+      
+      if (createdPlaylist && coverImageBase64) {
+        try {
+          // Remove data:image/jpeg;base64, prefix if it exists
+          const base64Data = coverImageBase64.startsWith('data:image/jpeg;base64,') 
+            ? coverImageBase64.substring('data:image/jpeg;base64,'.length) 
+            : coverImageBase64;
+          await spotifyApi.uploadCustomPlaylistCoverImage(
+            createdPlaylist.id,
+            base64Data
+          );
+          console.log(`Custom cover image uploaded for playlist ${createdPlaylist.id}`);
+        } catch (coverError) {
+          console.error('Error uploading playlist cover image:', coverError);
+          // Do not fail the whole process if cover upload fails, just log it.
+        }
+      }
       
       const searchPromises = recommendations.map(async (recommendation: string) => {
         const searchResult = await spotifyApi.searchTracks(recommendation, { limit: 1 }) as SpotifySearchTracksResponse;

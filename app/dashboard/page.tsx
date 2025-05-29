@@ -87,6 +87,13 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [playlistDetails, setPlaylistDetails] = useState<{id: string; name: string; url?: string} | null>(null); // url can be optional
   
+  // New state variables for album cover art
+  const [coverArt, setCoverArt] = useState<string | null>(null);
+  const [generatingCover, setGeneratingCover] = useState(false);
+  const [coverArtPrompt, setCoverArtPrompt] = useState<string | null>(null);
+  const [customPromptDescription, setCustomPromptDescription] = useState<string>('');
+  const [coverArtSource, setCoverArtSource] = useState<string | null>(null); // New state for cover art source
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: '',
@@ -185,6 +192,12 @@ export default function Dashboard() {
     );
   };
 
+  const clearSelections = () => {
+    setSelectedTracks([]);
+    setSelectedArtists([]);
+    showToast('Selections cleared!', 'info');
+  };
+
   const showModal = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
     setModalConfig({ title, message, type });
     setModalOpen(true);
@@ -199,6 +212,44 @@ export default function Dashboard() {
     setGenerating(true);
     setResult(null);
     setPlaylistDetails(null);
+    setCoverArt(null);
+    setCoverArtSource(null);
+
+    let generatedSpotifyCoverArt: string | null = null;
+    if (mood) {
+        try {
+            const coverArtResponse = await fetch('/api/generate-cover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mood,
+                    genre: genre || undefined,
+                    songTitles: selectedTracks.map(id => topTracks.find(t => t.id === id)?.name || 'Unknown Track').filter(name => name !== 'Unknown Track'),
+                    description: customPromptDescription.trim() || result?.explanation || undefined,
+                }),
+            });
+            if (coverArtResponse.ok) {
+                const coverData = await coverArtResponse.json();
+                if (coverData.success) {
+                    setCoverArt(coverData.imageBase64);
+                    setCoverArtPrompt(coverData.prompt);
+                    setCoverArtSource(coverData.source);
+                    if (coverData.spotifyReadyBase64) {
+                        generatedSpotifyCoverArt = coverData.spotifyReadyBase64;
+                    }
+                    showToast('Album cover generated!', 'success');
+                } else {
+                    showToast(`Cover art generation failed: ${coverData.error || 'No image data'}`, 'error');
+                }
+            } else {
+                const errorData = await coverArtResponse.json().catch(() => ({}));
+                showToast(`Cover art API error: ${errorData.error || 'Request failed'}`, 'error');
+            }
+        } catch (coverError) {
+            console.error("Error calling generate-cover API:", coverError);
+            showToast('Failed to generate cover art due to a network or unexpected error.', 'error');
+        }
+    }
 
     try {
       const response = await fetch('/api/dj', {
@@ -212,6 +263,7 @@ export default function Dashboard() {
           mood,
           genre: genre || undefined,
           songCount,
+          coverImageBase64: generatedSpotifyCoverArt,
         }),
       });
 
@@ -241,6 +293,105 @@ export default function Dashboard() {
       showModal('DJ Mix Error', message, 'error');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const generateCoverArtAndUpdatePlaylist = async (useCustomPrompt: boolean = false) => {
+    if (!mood && !useCustomPrompt) {
+      showToast('Mood is required to generate theme-based cover art', 'error');
+      return;
+    }
+    if (useCustomPrompt && !customPromptDescription.trim()) {
+        showToast('Please enter a description for your custom cover art.', 'warning');
+        return;
+    }
+    if (!playlistDetails?.id) {
+        showToast('No active playlist to update the cover for. Please generate a mix first.', 'warning');
+        return;
+    }
+
+    setGeneratingCover(true);
+    setCoverArtSource(null);
+
+    let apiRequestBody: {
+      mood: string;
+      genre?: string;
+      description?: string;
+      songTitles?: string[];
+    };
+
+    if (useCustomPrompt) {
+      apiRequestBody = {
+        mood: mood || 'custom',
+        genre: genre || undefined,
+        description: customPromptDescription.trim(),
+        songTitles: result?.tracks?.map(track => track.name) || [], 
+      };
+      setCoverArtPrompt(`Custom: ${customPromptDescription.trim()}`);
+    } else {
+      apiRequestBody = {
+        mood: mood!,
+        genre: genre || undefined,
+        songTitles: result?.tracks?.map(track => track.name) || [],
+        description: result?.explanation || undefined,
+      };
+    }
+
+    try {
+      const response = await fetch('/api/generate-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiRequestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({error: 'Failed to generate cover art'}));
+        showToast(`Cover art generation failed: ${errorData.error || 'Unknown error'}`, 'error');
+        setGeneratingCover(false);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success && data.imageBase64) {
+        setCoverArt(data.imageBase64);
+        if (!useCustomPrompt) setCoverArtPrompt(data.prompt);
+        setCoverArtSource(data.source);
+        
+        if (data.spotifyReadyBase64) {
+          try {
+            const base64Data = data.spotifyReadyBase64.startsWith('data:image/jpeg;base64,') 
+              ? data.spotifyReadyBase64.substring('data:image/jpeg;base64,'.length) 
+              : data.spotifyReadyBase64;
+              
+            const updateCoverResponse = await fetch('/api/update-playlist-cover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    playlistId: playlistDetails.id, 
+                    coverImageBase64: base64Data 
+                }),
+            });
+            if (updateCoverResponse.ok) {
+                showToast('Album cover generated and Spotify playlist updated!', 'success');
+            } else {
+                const updateError = await updateCoverResponse.json().catch(() => ({}));
+                showToast(`Spotify playlist cover update failed: ${updateError.error || 'Could not update'}`, 'error');
+            }
+          } catch (spotifyUpdateError) {
+            console.error("Error updating Spotify cover:", spotifyUpdateError);
+            showToast('Failed to update Spotify playlist cover.', 'error');
+          }
+        } else {
+          showToast('Album cover generated, but no Spotify-ready version was available to update playlist.', 'warning');
+        }
+      } else {
+        showToast('Failed to generate cover art: No image data received', 'error');
+      }
+    } catch (error) {
+      console.error('Error in generateCoverArtAndUpdatePlaylist:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to generate cover art.', 'error');
+    } finally {
+      setGeneratingCover(false);
     }
   };
 
@@ -480,27 +631,37 @@ export default function Dashboard() {
             <div className="bg-glass rounded-xl p-4 shadow-spotify">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold">Select Tracks & Artists</h3>
-                <div className="flex rounded-lg overflow-hidden border border-gray-700">
-              <button 
-                onClick={() => setActiveTab('topTracks')} 
-                    className={`px-4 py-2 text-sm ${activeTab === 'topTracks' ? 'bg-spotify-green text-white' : 'bg-spotify-dark text-gray-300 hover:bg-spotify-gray'} transition-all`}
-              >
-                    Top Tracks
-              </button>
-              <button 
-                onClick={() => setActiveTab('recentTracks')} 
-                    className={`px-4 py-2 text-sm ${activeTab === 'recentTracks' ? 'bg-spotify-green text-white' : 'bg-spotify-dark text-gray-300 hover:bg-spotify-gray'} transition-all`}
-              >
-                    Recent Tracks
-              </button>
-                  <button 
-                    onClick={() => setActiveTab('topArtists')}
-                    className={`px-4 py-2 text-sm ${activeTab === 'topArtists' ? 'bg-spotify-green text-white' : 'bg-spotify-dark text-gray-300 hover:bg-spotify-gray'} transition-all`}
+                {/* Wrapper for tabs and clear button */}
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-lg overflow-hidden border border-gray-700">
+                    <button 
+                      onClick={() => setActiveTab('topTracks')} 
+                      className={`px-4 py-2 text-sm ${activeTab === 'topTracks' ? 'bg-spotify-green text-white' : 'bg-spotify-dark text-gray-300 hover:bg-spotify-gray'} transition-all`}
+                    >
+                      Top Tracks
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('recentTracks')} 
+                      className={`px-4 py-2 text-sm ${activeTab === 'recentTracks' ? 'bg-spotify-green text-white' : 'bg-spotify-dark text-gray-300 hover:bg-spotify-gray'} transition-all`}
+                    >
+                      Recent Tracks
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('topArtists')}
+                      className={`px-4 py-2 text-sm ${activeTab === 'topArtists' ? 'bg-spotify-green text-white' : 'bg-spotify-dark text-gray-300 hover:bg-spotify-gray'} transition-all`}
+                    >
+                      Top Artists
+                    </button>
+                  </div> {/* End of tabs div */} 
+                  <button
+                    onClick={clearSelections}
+                    className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors shadow-sm hover:shadow-md"
+                    title="Clear all selected tracks and artists"
                   >
-                    Top Artists
+                    Clear All
                   </button>
-            </div>
-          </div>
+                </div> {/* End of wrapper div for tabs and clear button*/}
+              </div>
           
               {/* Track & Artist Selection */}
               <div className="overflow-y-auto max-h-[60vh] pr-2">
@@ -510,20 +671,11 @@ export default function Dashboard() {
                 <div 
                   key={artist.id}
                         onClick={() => toggleArtistSelection(artist.id)}
-                        className={`rounded-lg p-3 hover-scale cursor-pointer transition-all duration-200 ${
-                    selectedArtists.includes(artist.id) 
-                            ? 'bg-gradient-to-br from-green-900/60 to-green-800/60 border border-green-500/50' 
-                            : 'bg-spotify-dark/60 hover:bg-spotify-dark border border-transparent'
-                  }`}
+                        className={`rounded-lg p-3 hover-scale cursor-pointer transition-all duration-200 ${selectedArtists.includes(artist.id) ? 'bg-gradient-to-br from-green-900/60 to-green-800/60 border border-green-500/50' : 'bg-spotify-dark/60 hover:bg-spotify-dark border border-transparent'}`}
                 >
                         <div className="aspect-square w-full relative rounded-md overflow-hidden mb-2 shadow-md">
                           {artist.images?.[0]?.url ? (
-                    <Image
-                      src={artist.images[0].url}
-                      alt={artist.name}
-                              fill
-                              className="object-cover"
-                    />
+                    <Image src={artist.images[0].url} alt={artist.name} fill className="object-cover" />
                           ) : (
                             <div className="w-full h-full bg-spotify-gray flex items-center justify-center">
                               <span className="text-3xl">🎵</span>
@@ -552,20 +704,11 @@ export default function Dashboard() {
                       <div 
                         key={track.id}
                         onClick={() => toggleTrackSelection(track.id)}
-                        className={`mb-2 p-3 rounded-lg flex items-center gap-3 cursor-pointer hover-scale transition-all duration-200 ${
-                          selectedTracks.includes(track.id) 
-                            ? 'bg-gradient-to-r from-green-900/60 to-green-800/60 border border-green-500/50' 
-                            : 'bg-spotify-dark/60 hover:bg-spotify-dark border border-transparent'
-                        }`}
+                        className={`mb-2 p-3 rounded-lg flex items-center gap-3 cursor-pointer hover-scale transition-all duration-200 ${selectedTracks.includes(track.id) ? 'bg-gradient-to-r from-green-900/60 to-green-800/60 border border-green-500/50' : 'bg-spotify-dark/60 hover:bg-spotify-dark border border-transparent'}`}
                       >
                         <div className="relative h-12 w-12 shrink-0 rounded overflow-hidden shadow-md">
                           {track.album?.images?.[0]?.url ? (
-                            <Image
-                              src={track.album.images[0].url}
-                              alt={track.name}
-                              fill
-                              className="object-cover"
-                            />
+                            <Image src={track.album.images[0].url} alt={track.name} fill className="object-cover" />
                           ) : (
                             <div className="w-full h-full bg-spotify-gray flex items-center justify-center">
                               <span>🎵</span>
@@ -794,128 +937,240 @@ export default function Dashboard() {
                   </div>
                 </h3>
                 
-                <div className="space-y-2 mb-4">
-                  <p className="text-sm text-gray-300">{result.explanation}</p>
-                  {result.playlist && !editMode && (
-                    <div className="mt-2 pt-2 border-t border-gray-700">
-                      <p className="text-sm text-gray-300 flex items-center gap-2">
-                        <span className="text-gray-400">Playlist:</span> 
-                        <span className="font-medium text-gradient">{result.playlist.name}</span>
-                      </p>
-                    </div>
-                  )}
-                  {!result.playlist && (
-                    <div className="mt-2 pt-2 border-t border-gray-700">
-                      <p className="text-xs text-yellow-400">
-                        Note: The playlist couldn&apos;t be created on Spotify. You can still see the AI recommendations but cannot edit them.
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="overflow-y-auto max-h-[40vh] pr-2 mt-4">
-                  {editMode ? (
-                    // Editable playlist view
-                    editablePlaylist.map((track: EditablePlaylistItem, index: number) => (
-                      <div key={track.id || index} className="mb-3 p-3 bg-spotify-dark/80 rounded-lg flex items-center gap-3 hover-scale transition-all duration-200 border border-gray-800/50">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-spotify-green/20 text-white shrink-0">
-                          {index + 1}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{track.name}</p>
-                          <p className="text-sm text-gray-400 truncate">
-                            {Array.isArray(track.artists) 
-                              ? track.artists.map(a => typeof a === 'string' ? a : a.name).join(', ') 
-                              : ''}
-                          </p>
-                        </div>
-                        <div className="flex space-x-1 shrink-0">
+                {/* Add Album Cover Art Section */}
+                <div className="mb-6 flex flex-col sm:flex-row gap-6 items-start">
+                  <div className="w-full sm:w-1/3 flex-shrink-0">
+                    {coverArt ? (
+                      <div className="relative group">
+                        <Image 
+                          src={coverArt} 
+                          alt="AI Generated Album Cover" 
+                          width={512}
+                          height={512}
+                          className="w-full h-auto rounded-lg shadow-xl transform transition-all duration-300 group-hover:scale-[1.02] border-2 border-spotify-green/30"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
                           <button 
-                            onClick={() => moveTrackUp(index)}
-                            disabled={index === 0}
-                            className={`p-1.5 rounded-full text-white ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-700'} transition-colors`}
-                            title="Move up"
+                            onClick={() => generateCoverArtAndUpdatePlaylist(!!customPromptDescription.trim())} 
+                            disabled={generatingCover}
+                            className="bg-spotify-dark/90 hover:bg-spotify-green text-white rounded-full p-3 shadow-lg transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            title={customPromptDescription.trim() ? "Regenerate with your description & update Spotify" : "Regenerate with playlist theme & update Spotify"}
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
+                            {generatingCover ? (
+                              <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 animate-spin mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.75V6.25M17.25 6.75L16.071 7.929M19.25 12L17.75 12M17.25 17.25L16.071 16.071M12 17.75V19.25M6.75 17.25L7.929 16.071M4.75 12L6.25 12M6.75 6.75L7.929 7.929" />
+                                </svg>
+                                <span className="text-xs">Regenerating...</span>
+                              </>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            )}
                           </button>
-                          <button 
-                            onClick={() => moveTrackDown(index)}
-                            disabled={index === editablePlaylist.length - 1}
-                            className={`p-1.5 rounded-full text-white ${index === editablePlaylist.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-700'} transition-colors`}
-                            title="Move down"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-              <button
-                            onClick={() => removeTrackFromPlaylist(index)}
-                            className="p-1.5 rounded-full text-white hover:bg-red-700 transition-colors"
-                            title="Remove"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-              </button>
-            </div>
-          </div>
-                    ))
-                  ) : (
-                    // Regular playlist view (uses result.tracks or result.spotifyTracks)
-                    (result?.spotifyTracks?.length > 0 ? result.spotifyTracks : result?.tracks || []).map((track: Track | {name: string, artists: {name: string}[]}, index: number) => (
-                      <div 
-                        key={(track as Track).id || index} 
-                        className="mb-3 p-3 bg-spotify-dark/80 rounded-lg flex items-center gap-3 hover-scale transition-all duration-200 border border-gray-800/50"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-spotify-green/20 text-white shrink-0">
-                          {index + 1}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{track.name}</p>
-                          <p className="text-sm text-gray-400 truncate">
-                            {Array.isArray(track.artists) ? track.artists.map(a => a.name).join(', ') : ''}
-                          </p>
+                        <div className="absolute -bottom-1 -right-1">
+                          <div className="bg-spotify-green text-xs text-black font-bold px-2 py-1 rounded-tl-lg rounded-br-lg shadow-md">
+                            AI GENERATED
+                          </div>
                         </div>
-                        {visualizerActive && (
-                          <div className="flex items-end h-8 space-x-0.5">
-                            {[...Array(4)].map((_, i) => (
-                              <div 
-                                key={i}
-                                className="w-1 bg-spotify-green animate-wave rounded-t-full"
-                                style={{
-                                  height: `${Math.floor(Math.random() * 100)}%`,
-                                  animationDuration: `${Math.random() * 0.5 + 0.3}s`,
-                                  animationDelay: `${i * 0.1}s`
-                                }}
-                              ></div>
-                            ))}
+                      </div>
+                    ) : (
+                      <div className="w-full aspect-square bg-spotify-dark/50 rounded-lg flex flex-col items-center justify-center p-4 border border-gray-700/50">
+                        {generatingCover ? (
+                          <div className="flex flex-col items-center justify-center h-full space-y-3">
+                            <div className="animate-spin h-10 w-10 border-4 border-spotify-green border-t-transparent rounded-full"></div>
+                            <p className="text-sm text-gray-400 text-center">Generating album cover...</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center space-y-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <button
+                              onClick={() => generateCoverArtAndUpdatePlaylist(false)} // This will now also attempt to update Spotify if a playlist exists
+                              disabled={generatingCover || !result || !playlistDetails?.id} // Disable if no playlist to update
+                              className="bg-spotify-green hover:bg-green-600 text-white text-sm font-medium py-2.5 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            >
+                              {playlistDetails?.id ? 'Generate & Update Cover' : 'Generate Album Cover'}
+                            </button>
+                            <p className="text-xs text-gray-500 text-center">Create a mix first to enable cover generation.</p>
                           </div>
                         )}
-        </div>
-                    ))
-                  )}
-      </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="w-full sm:w-2/3 flex flex-col">
+                    <div className="space-y-2 mb-4">
+                      <p className="text-sm text-gray-300">{result.explanation}</p>
+                      {result.playlist && !editMode && (
+                        <div className="mt-2 pt-2 border-t border-gray-700/50">
+                          <p className="text-sm text-gray-300 flex items-center gap-2">
+                            <span className="text-gray-400">Playlist:</span> 
+                            <span className="font-medium text-gradient">{result.playlist.name}</span>
+                          </p>
+                        </div>
+                      )}
+                      {coverArtPrompt && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-400">
+                            <span className="text-gray-500 font-semibold">Art Prompt:</span> {coverArtPrompt}
+                          </p>
+                        </div>
+                      )}
+                      {coverArtSource && (
+                        <div className="mt-1">
+                          <p className="text-xs text-gray-500">
+                            <span className="text-gray-500 font-semibold">Source:</span> <span className="capitalize">{coverArtSource === 'huggingface' ? 'Hugging Face AI' : 'Fallback Image'}</span>
+                          </p>
+                        </div>
+                      )}
+                      {!result.playlist && (
+                        <div className="mt-2 pt-2 border-t border-gray-700/50">
+                          <p className="text-xs text-yellow-500">
+                            Note: The playlist couldn&apos;t be created on Spotify. You can still see the AI recommendations.
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
-                {playlistDetails && !editMode && (
-                  <div className="mt-4 pt-4 border-t border-gray-700 flex justify-center">
-                    <a 
-                      href={playlistDetails.url}
+                    {/* Custom Prompt Input */} 
+                    {result && (
+                        <div className="mt-auto pt-4 border-t border-gray-700/50">
+                            <label htmlFor="customPrompt" className="block text-sm font-medium text-gray-300 mb-1">Customize Cover Art (Optional)</label>
+                            <textarea
+                                id="customPrompt"
+                                value={customPromptDescription}
+                                onChange={(e) => setCustomPromptDescription(e.target.value)}
+                                placeholder="e.g., a cat DJing in space, pixel art style..."
+                                rows={2}
+                                className="w-full p-2 bg-spotify-dark border border-gray-600 rounded-lg focus:ring-spotify-green focus:border-spotify-green transition-colors text-sm placeholder-gray-500"
+                            />
+                            <button
+                                onClick={() => generateCoverArtAndUpdatePlaylist(true)} // This also attempts to update Spotify
+                                disabled={generatingCover || !customPromptDescription.trim() || !playlistDetails?.id}
+                                className="mt-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${generatingCover && customPromptDescription.trim() ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    {generatingCover && customPromptDescription.trim() ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.75V6.25M17.25 6.75L16.071 7.929M19.25 12L17.75 12M17.25 17.25L16.071 16.071M12 17.75V19.25M6.75 17.25L7.929 16.071M4.75 12L6.25 12M6.75 6.75L7.929 7.929" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /> // Plus icon
+                                    )}
+                                </svg>
+                                Generate with My Description
+                            </button>
+                        </div>
+                    )}
+                    
+                    {/* Rest of your existing playlist rendering code */}
+                    <div className="overflow-y-auto max-h-[calc(40vh-80px)] pr-2 mt-4">
+                      {editMode ? (
+                        // Editable playlist view
+                        editablePlaylist.map((track: EditablePlaylistItem, index: number) => (
+                          <div key={track.id || index} className="mb-3 p-3 bg-spotify-dark/80 rounded-lg flex items-center gap-3 hover-scale transition-all duration-200 border border-gray-800/50">
+                            <div className="flex items-center justify-center h-8 w-8 rounded-full bg-spotify-green/20 text-white shrink-0">
+                              {index + 1}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium truncate">{track.name}</p>
+                              <p className="text-sm text-gray-400 truncate">
+                                {Array.isArray(track.artists) 
+                                  ? track.artists.map(a => typeof a === 'string' ? a : a.name).join(', ') 
+                                  : ''}
+                              </p>
+                            </div>
+                            <div className="flex space-x-1 shrink-0">
+                              <button 
+                                onClick={() => moveTrackUp(index)}
+                                disabled={index === 0}
+                                className={`p-1.5 rounded-full text-white ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-700'} transition-colors`}
+                                title="Move up"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                </svg>
+                              </button>
+                              <button 
+                                onClick={() => moveTrackDown(index)}
+                                disabled={index === editablePlaylist.length - 1}
+                                className={`p-1.5 rounded-full text-white ${index === editablePlaylist.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-700'} transition-colors`}
+                                title="Move down"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                <button
+                              onClick={() => removeTrackFromPlaylist(index)}
+                              className="p-1.5 rounded-full text-white hover:bg-red-700 transition-colors"
+                              title="Remove"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                </button>
+              </div>
+            </div>
+                      ))
+                    ) : (
+                      // Regular playlist view (uses result.tracks or result.spotifyTracks)
+                      (result?.spotifyTracks?.length > 0 ? result.spotifyTracks : result?.tracks || []).map((track: Track | {name: string, artists: {name: string}[]}, index: number) => (
+                        <div 
+                          key={(track as Track).id || index} 
+                          className="mb-3 p-3 bg-spotify-dark/80 rounded-lg flex items-center gap-3 hover-scale transition-all duration-200 border border-gray-800/50"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-spotify-green/20 text-white shrink-0">
+                            {index + 1}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate">{track.name}</p>
+                            <p className="text-sm text-gray-400 truncate">
+                              {Array.isArray(track.artists) ? track.artists.map(a => a.name).join(', ') : ''}
+                            </p>
+                          </div>
+                          {visualizerActive && (
+                            <div className="flex items-end h-8 space-x-0.5">
+                              {[...Array(4)].map((_, i) => (
+                                <div 
+                                  key={i}
+                                  className="w-1 bg-spotify-green animate-wave rounded-t-full"
+                                  style={{
+                                    height: `${Math.floor(Math.random() * 100)}%`,
+                                    animationDuration: `${Math.random() * 0.5 + 0.3}s`,
+                                    animationDelay: `${i * 0.1}s`
+                                  }}
+                                ></div>
+                              ))}
+                            </div>
+                          )}
+              </div>
+                      ))
+                    )}
+            </div>
+
+            {playlistDetails && !editMode && (
+              <div className="mt-4 pt-4 border-t border-gray-700 flex justify-center">
+                <a 
+                  href={playlistDetails.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                      className="bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-2 px-6 rounded-full flex items-center transition-all shadow-spotify"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Listen on Spotify
+                  className="bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-2 px-6 rounded-full flex items-center transition-all shadow-spotify"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Listen on Spotify
                 </a>
               </div>
-                )}
-              </div>
+            )}
+          </div>
+        </div>
+      </div>
             )}
           </div>
         </div>

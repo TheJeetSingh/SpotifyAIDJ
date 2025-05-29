@@ -8,6 +8,7 @@ An AI-powered DJ application that creates personalized playlists based on your S
 - AI-powered playlist generation using Google's Gemini
 - Custom playlist creation with mood and genre selection
 - Responsive user interface built with Next.js and Tailwind CSS
+- AI-generated album cover art using Hugging Face Stable Diffusion
 
 ## Setup
 
@@ -16,6 +17,7 @@ An AI-powered DJ application that creates personalized playlists based on your S
 - Node.js (v18+ recommended)
 - Spotify Developer Account
 - Google AI Studio API Key (for Gemini)
+- Hugging Face API Token (for album cover generation)
 
 ### Spotify Developer Setup
 
@@ -29,6 +31,13 @@ An AI-powered DJ application that creates personalized playlists based on your S
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create an API key
 3. Copy your API key for the next step
+
+### Hugging Face Setup
+
+1. Create an account on [Hugging Face](https://huggingface.co/)
+2. Go to your profile settings and navigate to Access Tokens
+3. Create a new token and select "Read" access
+4. Copy your API token for the next step
 
 ### Installation
 
@@ -49,6 +58,7 @@ An AI-powered DJ application that creates personalized playlists based on your S
    SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
    SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/callback
    GEMINI_API_KEY=your_gemini_api_key
+   HUGGINGFACE_API_TOKEN=your_huggingface_token
    ```
 
 4. Start the development server
@@ -65,7 +75,9 @@ An AI-powered DJ application that creates personalized playlists based on your S
 3. Select tracks from your top tracks that will influence the Gemini DJ
 4. Choose a mood and optional genre
 5. Click "Generate DJ Mix"
-6. Once generated, open the playlist in Spotify to listen to your Gemini-generated mix
+6. Once generated, the app will automatically create an AI-generated album cover for your playlist
+7. You can regenerate the album cover by hovering over it and clicking the regenerate button
+8. Open the playlist in Spotify to listen to your Gemini-generated mix
 
 ## Technologies Used
 
@@ -75,6 +87,7 @@ An AI-powered DJ application that creates personalized playlists based on your S
 - Tailwind CSS
 - Spotify Web API
 - Google Gemini API
+- Hugging Face Stable Diffusion API
 
 ## License
 
