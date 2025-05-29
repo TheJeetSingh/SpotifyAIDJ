@@ -148,17 +148,17 @@ export async function GET(req: NextRequest) {
       const friendCode = Buffer.from(`${userId}:${accessToken}`).toString('base64');
       
       return NextResponse.json({ friendCode });
-    } catch (error) {
+    } catch {
       // If token verification fails, return 401
       return NextResponse.json(
         { error: 'Invalid access token', details: 'Your session has expired. Please log in again.' },
         { status: 401 }
       );
     }
-  } catch (error) {
-    console.error('Error generating friend code:', error);
+  } catch (err) {
+    console.error('Error generating friend code:', err);
     return NextResponse.json(
-      { error: 'Failed to generate friend code', details: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { error: 'Failed to generate friend code', details: err instanceof Error ? err.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }
