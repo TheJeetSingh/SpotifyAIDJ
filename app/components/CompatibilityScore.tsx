@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface CompatibilityResult {
   score: number;
@@ -193,12 +194,14 @@ export default function CompatibilityScore() {
             <div className="flex justify-center items-center mb-4">
               <div className="text-center mr-4">
                 <div className="w-12 h-12 overflow-hidden rounded-full mx-auto bg-gray-200">
-                  {result.currentUser.image ? (
-                    <img src={result.currentUser.image} alt={result.currentUser.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-800 text-xl font-bold">
-                      {result.currentUser.name.charAt(0)}
-                    </div>
+                  {result.currentUser.image && (
+                    <Image
+                      src={result.currentUser.image}
+                      alt={`${result.currentUser.name}'s profile`}
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                    />
                   )}
                 </div>
                 <p className="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{result.currentUser.name}</p>
@@ -210,12 +213,14 @@ export default function CompatibilityScore() {
               
               <div className="text-center ml-4">
                 <div className="w-12 h-12 overflow-hidden rounded-full mx-auto bg-gray-200">
-                  {result.friendUser.image ? (
-                    <img src={result.friendUser.image} alt={result.friendUser.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-800 text-xl font-bold">
-                      {result.friendUser.name.charAt(0)}
-                    </div>
+                  {result.friendUser.image && (
+                    <Image
+                      src={result.friendUser.image}
+                      alt={`${result.friendUser.name}'s profile`}
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                    />
                   )}
                 </div>
                 <p className="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{result.friendUser.name}</p>

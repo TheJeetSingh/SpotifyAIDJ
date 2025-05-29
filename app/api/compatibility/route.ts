@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     // Verify current user's token is valid
     try {
       await currentUserApi.getMe();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid access token', details: 'Your session has expired. Please log in again.' },
         { status: 401 }
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     let decodedFriendCode: string;
     try {
       decodedFriendCode = Buffer.from(friendCode, 'base64').toString('utf-8');
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid friend code format', details: 'The provided friend code is not properly encoded.' },
         { status: 400 }
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     // Verify friend's token is valid
     try {
       await friendApi.getMe();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid friend code', details: 'Your friend\'s session has expired. Ask them to generate a new friend code.' },
         { status: 400 }
@@ -108,17 +108,17 @@ export async function POST(req: NextRequest) {
           image: friendUser.body.images?.[0]?.url
         }
       });
-    } catch (error) {
-      console.error('Error calculating compatibility:', error);
+    } catch (err) {
+      console.error('Error calculating compatibility:', err);
       return NextResponse.json(
-        { error: 'Compatibility calculation failed', details: error instanceof Error ? error.message : 'Unknown error occurred' },
+        { error: 'Compatibility calculation failed', details: err instanceof Error ? err.message : 'Unknown error occurred' },
         { status: 500 }
       );
     }
-  } catch (error) {
-    console.error('Error in compatibility endpoint:', error);
+  } catch (err) {
+    console.error('Error in compatibility endpoint:', err);
     return NextResponse.json(
-      { error: 'Server error', details: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { error: 'Server error', details: err instanceof Error ? err.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }

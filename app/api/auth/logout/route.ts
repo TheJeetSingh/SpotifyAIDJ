@@ -44,36 +44,12 @@ export async function POST(req: NextRequest) {
 }
 
 // Also allow GET request for simple logout link if preferred, though POST is common for actions
-export async function GET(req: NextRequest) {
-  try {
-    const response = NextResponse.json({ message: 'Logged out successfully' }, { status: 200 });
-
-    response.cookies.set({
-      name: 'spotify_access_token',
-      value: '',
-      path: '/',
-      maxAge: 0,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
-
-    // response.cookies.set({ 
-    //   name: 'spotify_refresh_token', 
-    //   value: '', 
-    //   path: '/', 
-    //   maxAge: 0, 
-    //   /* other flags as needed */ 
-    // });
-
-    // Optionally redirect, or let client handle it.
-    // const homeUrl = new URL('/', req.url);
-    // return NextResponse.redirect(homeUrl, { headers: response.headers }); // Pass headers with cookies
-    
-    return response;
-  } catch (error) {
-    console.error('Error during logout (GET):', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ error: 'Logout failed', details: errorMessage }, { status: 500 });
-  }
+export async function GET() {
+  const response = NextResponse.json({ success: true });
+  
+  // Clear all auth cookies
+  response.cookies.delete('spotify_access_token');
+  response.cookies.delete('spotify_refresh_token');
+  
+  return response;
 } 

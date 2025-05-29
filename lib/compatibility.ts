@@ -59,7 +59,7 @@ export async function calculateCompatibility(
         spotify1.getMyTopArtists({ limit: 50, time_range: 'medium_term' }),
         spotify2.getMyTopArtists({ limit: 50, time_range: 'medium_term' })
       ]);
-    } catch (error) {
+    } catch {
       throw new Error('Failed to fetch top artists. This could be due to expired tokens or API limits.');
     }
 
@@ -68,7 +68,7 @@ export async function calculateCompatibility(
         spotify1.getMyTopTracks({ limit: 50, time_range: 'medium_term' }),
         spotify2.getMyTopTracks({ limit: 50, time_range: 'medium_term' })
       ]);
-    } catch (error) {
+    } catch {
       throw new Error('Failed to fetch top tracks. This could be due to expired tokens or API limits.');
     }
 
