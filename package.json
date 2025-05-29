@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@types/mongoose": "^5.11.96",
     "@vercel/analytics": "^1.5.0",
     "axios": "^1.9.0",
+    "mongoose": "^8.15.1",
     "next": "15.3.2",
     "openai": "^4.103.0",
     "react": "^19.0.0",

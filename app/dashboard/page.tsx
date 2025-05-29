@@ -102,6 +102,22 @@ export default function Dashboard() {
     router.push('/dashboard/compatibility');
   };
 
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (response.ok) {
+        showToast('Logged out successfully', 'success');
+        router.push('/'); // Redirect to homepage/login page
+      } else {
+        const data = await response.json();
+        showModal('Logout Failed', data.details || 'Could not log out.', 'error');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      showModal('Logout Failed', 'An unexpected error occurred during logout.', 'error');
+    }
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -441,6 +457,16 @@ export default function Dashboard() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-all duration-300 shadow-md"
+                title="Logout"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-0 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>

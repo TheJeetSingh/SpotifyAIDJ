@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     // Create response and set cookies
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     
-    // Set cookies with HttpOnly for security
+    // Set cookies with more permissive settings for cross-device compatibility
     response.cookies.set({
       name: 'spotify_access_token',
       value: access_token,
@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: process.env.NODE_ENV === 'production' ? process.env.DOMAIN : undefined,
     });
     
     response.cookies.set({
@@ -34,11 +35,13 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: process.env.NODE_ENV === 'production' ? process.env.DOMAIN : undefined,
     });
 
     return response;
   } catch (error) {
     console.error('Error during callback:', error);
-    return NextResponse.redirect(new URL('/?error=callback_error', request.url));
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.redirect(new URL(`/?error=callback_error&details=${encodeURIComponent(errorMessage)}`, request.url));
   }
 } 

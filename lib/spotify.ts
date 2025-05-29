@@ -1,9 +1,12 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 
 // Get the credentials from environment variables
-const clientId = process.env.SPOTIFY_CLIENT_ID || '6a2ee07636bd474f93444cea83914e5c';
-const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || '95f2bed6aa274bd684e7463c1e2a79ef';
+const clientId = process.env.SPOTIFY_CLIENT_ID;
+const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'http://localhost:3000/api/auth/callback';
+
+if (!clientId) throw new Error('SPOTIFY_CLIENT_ID must be defined');
+if (!clientSecret) throw new Error('SPOTIFY_CLIENT_SECRET must be defined');
 
 const scopes = [
   'user-read-email',

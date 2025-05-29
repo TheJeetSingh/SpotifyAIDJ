@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     // Create response with new access token
     const response = NextResponse.json({ success: true });
     
-    // Set the new access token cookie
+    // Set the new access token cookie with consistent settings
     response.cookies.set({
       name: 'spotify_access_token',
       value: access_token,
@@ -25,11 +25,33 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: process.env.NODE_ENV === 'production' ? process.env.DOMAIN : undefined,
     });
 
     return response;
   } catch (error) {
     console.error('Error refreshing token:', error);
-    return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 });
+    // If refresh fails, clear both tokens to force re-login
+    const response = NextResponse.json(
+      { error: 'Failed to refresh token', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 401 }
+    );
+
+    // Clear both tokens
+    response.cookies.set({
+      name: 'spotify_access_token',
+      value: '',
+      maxAge: 0,
+      path: '/',
+    });
+    
+    response.cookies.set({
+      name: 'spotify_refresh_token',
+      value: '',
+      maxAge: 0,
+      path: '/',
+    });
+
+    return response;
   }
 } 
